@@ -389,6 +389,21 @@ a.lockup{text-decoration:none;color:inherit;border-radius:8px}
 .home-step h4{margin:0;font-size:17px;font-weight:800}
 .home-step p{margin:0;font-size:13px;color:var(--muted);flex:1}
 .home-step-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+/* troubleshooting plate link */
+.plate-link{padding:20px;display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:720px){.plate-link{grid-template-columns:1fr}}
+.plate-link .well{aspect-ratio:4/3;padding:14px}
+.plate-link .well .gear{width:100%;height:100%;object-fit:contain}
+.plate-copy{display:flex;flex-direction:column;gap:10px;min-width:0}
+.plate-copy h2{margin:0;font-size:26px;font-weight:800}
+.plate-copy p{margin:0;max-width:62ch}
+.plate-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.home-plate{padding:12px;display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:14px;align-items:center}
+@media (max-width:640px){.home-plate{grid-template-columns:90px minmax(0,1fr)}.home-plate .btn{grid-column:1/-1}}
+.home-plate .well{height:84px;padding:6px}
+.home-plate .well .gear{width:100%;height:100%;object-fit:contain}
+.home-plate h4{margin:2px 0;font-size:17px;font-weight:800}
+.home-plate p{margin:0;font-size:13px;color:var(--muted)}
 /* final test name + send results */
 .ftname{display:flex;flex-direction:column;gap:6px;max-width:420px}
 .ftname label{font-size:13px;font-weight:700}
@@ -897,7 +912,7 @@ document.addEventListener("error", e => { const t = e.target; if (t && t.tagName
 const what = it => CAT[it.cat][0];
 
 /* ================= state ================= */
-const VIEWS = [["home","Home"],["gear-id","Gear training"],["wiring-lessons","Wiring lessons"],["builder","System builder"],["final-test","Final test"],["study","Study the gear"]];
+const VIEWS = [["home","Home"],["gear-id","Gear training"],["wiring-lessons","Wiring lessons"],["builder","System builder"],["plate","Troubleshooting plate"],["final-test","Final test"],["study","Study the gear"]];
 const S = { view:"home" };
 const views = () => T.admin ? [...VIEWS, ["results","Results"]] : VIEWS;
 const Q = { len:"5", showMfr:true, sound:(() => { try { return localStorage.getItem("gearid-sound") !== "0"; } catch (e) { return true; } })(), rounds:[], r:0, place:{}, right:0, total:0, missed:[], sel:null, done:false,
@@ -925,6 +940,7 @@ const NAV = [
   { k:"home", label:"Home", view:"home" },
   { k:"train", label:"Training & games", items:["gear-id", "builder"] },
   { k:"learn", label:"Study", items:["study", "wiring-lessons"] },
+  { k:"plate", label:"Troubleshooting plate", view:"plate" },
   { k:"final", label:"Final test", view:"final-test" }
 ];
 const viewName = k => (views().find(v => v[0] === k) || [k, k])[1];
@@ -956,7 +972,7 @@ addEventListener("resize", closeNavMenu); addEventListener("scroll", closeNavMen
 function go(view){ S.view = view; try{ if (location.hash.slice(1) !== view) history.replaceState(null,"","#"+view); }catch(e){} render(); }
 function render(){
   renderTabs();
-  if (S.view === "home") renderHome(); else if (S.view === "results" && T.admin) renderResults(); else if (S.view === "study") renderStudy(); else if (S.view === "signal-flow"){ S.view = "builder"; return render(); } else if (S.view === "final-test") renderFinal(); else if (S.view === "wiring-lessons") renderLessons(); else if (S.view === "builder"){ B = BP; renderBuilder(); } else renderQuiz();
+  if (S.view === "home") renderHome(); else if (S.view === "plate") renderPlate(); else if (S.view === "results" && T.admin) renderResults(); else if (S.view === "study") renderStudy(); else if (S.view === "signal-flow"){ S.view = "builder"; return render(); } else if (S.view === "final-test") renderFinal(); else if (S.view === "wiring-lessons") renderLessons(); else if (S.view === "builder"){ B = BP; renderBuilder(); } else renderQuiz();
 }
 document.addEventListener("click", e => { const t = e.target.closest("[data-tab]"); if (t){ closeNavMenu(); go(t.dataset.tab); } });
 
@@ -1259,9 +1275,38 @@ function renderHome(){
         <h4>${esc(st.title)}</h4>
         <p>${esc(st.text)}</p>
         <div class="home-step-actions"><button class="btn ${st.n === 4 ? "primary" : ""} small" data-tab="${st.tab}">${esc(st.label || "Open " + st.title.toLowerCase())}</button>${st.alt ? `<button class="btn small" data-tab="${st.alt.tab}">${esc(st.alt.label)}</button>` : ""}</div>
-      </div></li>`).join("")}</ol>`;
+      </div></li>`).join("")}</ol>
+  <h3 class="home-h">Hands-on</h3>
+  <div class="card home-plate">
+    <div class="well">${pic("Custom WP Plate")}</div>
+    <div><span class="home-tag">Practical</span><h4>Troubleshooting plate</h4><p>Test a real termination plate, plate side and wire side, and find the faults your trainer planted.</p></div>
+    <button class="btn" data-tab="plate">Go to the plate exercise</button>
+  </div>`;
 }
 const DEFAULT_PIC = model => ITEMS.find(x => x.model === model) || null;
+
+/* ================= TROUBLESHOOTING PLATE (link) ================= */
+/* The hands-on plate exercise lives in its own claude.ai page, which keeps the private fault key, saved runs and email. */
+const PLATE_URL = "https://claude.ai/artifact/TxHh4YKFcqLCT7MU2HSMCv";
+function renderPlate(){
+  const it = ITEMS.find(x => x.model === "Custom WP Plate");
+  $("#app").innerHTML = `
+  <section class="card plate-link">
+    <div class="well">${it ? gearSVG(it) : ""}</div>
+    <div class="plate-copy">
+      <span class="eyebrow">Hands-on exercise</span>
+      <h2>Troubleshooting plate</h2>
+      <p>Test a real termination plate, line by line. For each line you check two things: the plate side (the chassis termination) and the wire side (the tail termination). Mark each one Pass or Fail and describe what you found. Your trainer has planted faults to find.</p>
+      <ul class="plate-steps">
+        <li>Open the plate checklist and start a run.</li>
+        <li>Work through every line on the plate and on the tails.</li>
+        <li>Finish your run. It's scored against the planted faults, and your trainer sees the results.</li>
+      </ul>
+      <div class="actions" style="justify-content:flex-start"><a class="btn primary" href="${PLATE_URL}" target="_blank" rel="noopener">Open the Troubleshooting Plate ↗</a></div>
+      <p class="hint">Opens in a new tab on claude.ai. You need access to that page; ask your trainer if it doesn't open.</p>
+    </div>
+  </section>`;
+}
 
 /* ================= STUDY ================= */
 function renderStudy(){
