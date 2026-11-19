@@ -1056,7 +1056,7 @@ function render(){
   if (!R || !HOST || !HOST.isConnected) return;
   renderTabs();
   const app = $("#app");
-  if (!S.db) { app.innerHTML = S.noDb ? `<div class="notice"><b>The plate can't load here.</b> Open this page on claude.ai while signed in to your Summit account to take the plate test and save your result.</div>` : `<div class="loading">Loading the plate…</div>`; return; }
+  if (!S.db) { app.innerHTML = S.noDb ? `<div class="notice"><b>The plate can't load here.</b> Open this page on claude.ai while signed in to your Summit account to take the Trouble Shooting Test and save your result.</div>` : `<div class="loading">Loading the plate…</div>`; return; }
   if (!S.plate) { app.innerHTML = `<div class="notice"><b>No plate loaded yet.</b> ${S.canEdit ? "The plate's line list hasn't been added yet. Ask Claude to copy it in." : "Your trainer hasn't set up the plate yet."}</div>`; return; }
   if (S.view === "mgr" && S.mgrView === "unlock" && !S.canEdit) return renderUnlock(app);
   if (S.view === "mgr" && S.canEdit) return renderMgr(app);
@@ -1078,19 +1078,19 @@ function renderStart(app){
         <p>Work the plate line by line. For each line, check the plate-side termination and the wire-side tail, mark it Pass or Fail, and pick the fault you found. Your answers save as you go. When you submit, you get your score right away and can email your results.</p>
         <form class="form-row" id="startForm">
           <div class="field"><label for="techName">Your full name</label><input type="text" id="techName" placeholder="First and last name" autocomplete="name" value="${esc(GID()?.getName?.() || "")}" ${noId?"disabled":""}></div>
-          <button class="btn primary" type="submit" ${noId?"disabled":""}>Start the plate test</button>
+          <button class="btn primary" type="submit" ${noId?"disabled":""}>Start the test</button>
         </form>
         <p class="muted">${passMark()}% to pass. Score is faults found divided by faults planted plus false calls.</p>
         ${noId ? `<p class="muted">Sign in with your Summit account to save a test run.</p>` : ""}
       </div>
       <div class="card">
-        <span class="eyebrow">Your plate tests</span>
+        <span class="eyebrow">Your Trouble Shooting Tests</span>
         ${list.length ? `<div class="list">${list.map(([id,a]) => {
           const n = progress(a.marks);
           return `<div class="li"><div><span class="n">${esc(a.tech)}</span><small>${fmtDate(a.startedAt)} · ${a.result ? `${a.result.pct}%, ${a.result.found} of ${a.result.faultCount} faults found` : `${n}/${LINES.length*2} checks`}</small></div>
             <div style="display:flex;gap:8px;align-items:center">${a.result ? `<span class="pill ${a.result.pass ? "found" : "false"}">${a.result.pass ? "Pass" : "Not yet"}</span>` : a.submittedAt ? `<span class="pill done">Submitted</span>` : `<span class="pill prog">In progress</span>`}
             <button class="btn small" data-open="${esc(id)}">${a.submittedAt ? "View" : "Resume"}</button></div></div>`;}).join("")}</div>`
-        : `<p>No plate tests yet. Start one and it shows up here, so you can pick it back up later.</p>`}
+        : `<p>No tests yet. Start one and it shows up here, so you can pick it back up later.</p>`}
       </div>
     </div>`;
 }
@@ -1199,9 +1199,9 @@ function resultStateFor(res, marks){
 function resultSummary(a){
   const r = a.result, missed = r.rows.filter(x => x.o === "missed"), falses = r.rows.filter(x => x.o === "false");
   return [
-    "Troubleshooting plate: test result",
+    "Trouble Shooting Test: result",
     "Name: " + ((a.tech || "").trim() || "(not given)"),
-    "Plate: " + (S.plate?.plateId || "Troubleshooting plate"),
+    "Plate: " + (S.plate?.plateId || "Trouble Shooting Test"),
     "Date: " + new Date(a.submittedAt).toLocaleString(),
     "Result: " + (r.pass ? "PASS" : "NOT YET") + " (" + r.pct + "%; " + passMark() + "% needed)",
     "Faults found: " + r.found + " of " + r.faultCount + " (" + r.named + " named right)",
@@ -1213,11 +1213,11 @@ function resultSummary(a){
 }
 function resultHTML(a){
   const r = a.result, to = GID()?.resultsTo || "", body = resultSummary(a);
-  const subject = `Troubleshooting plate result: ${(a.tech || "").trim() || "Technician"} (${r.pass ? "PASS" : "NOT YET"} ${r.pct}%)`;
+  const subject = `Trouble Shooting Test result: ${(a.tech || "").trim() || "Technician"} (${r.pass ? "PASS" : "NOT YET"} ${r.pct}%)`;
   const href = "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
   const save = {saving:"Saving to your training record…", saved:"Saved to your training record.", signin:"Results are saved only when you're signed in to claude.ai.", err:"This result didn't save to your training record. Check your connection and reload."}[S.recordState[S.attemptId] || ""] || "";
   return `<section class="card result">
-    <div><span class="eyebrow">Troubleshooting plate · result</span><h2>${r.pass ? "You passed" : "Not yet. Keep practicing and try again"}</h2></div>
+    <div><span class="eyebrow">Trouble Shooting Test · result</span><h2>${r.pass ? "You passed" : "Not yet. Keep practicing and try again"}</h2></div>
     <div class="stats">
       <div class="stat ${r.pass ? "g" : "r"}"><b>${r.pct}%</b><span>Score · ${passMark()}% to pass</span></div>
       <div class="stat g"><b>${r.found}<span class="of"> / ${r.faultCount}</span></b><span>Faults found · ${r.named} named right</span></div>
@@ -1819,7 +1819,7 @@ let booted = false;
 const progPath = () => "runs/" + S.uid + "/plate/progress";
 function mount(el){
   HOST = el; R = el.attachShadow({mode:"open"});
-  R.innerHTML = `<style>${CSS}</style><nav class="subnav pt-tabs" id="tabs" role="tablist" aria-label="Troubleshooting plate" hidden></nav><div id="app" class="pt-app"><div class="loading">Loading the plate…</div></div>`;
+  R.innerHTML = `<style>${CSS}</style><nav class="subnav pt-tabs" id="tabs" role="tablist" aria-label="Trouble Shooting Test" hidden></nav><div id="app" class="pt-app"><div class="loading">Loading the plate…</div></div>`;
   HANDLERS.forEach(([t, f]) => R.addEventListener(t, f));
   new MutationObserver(queueFit).observe(R.getElementById("app"), {childList:true, subtree:true});
   if (!booted){ booted = true; boot(); }
@@ -2309,7 +2309,7 @@ document.addEventListener("error", e => { const t = e.target; if (t && t.tagName
 const what = it => CAT[it.cat][0];
 
 /* ================= state ================= */
-const VIEWS = [["home","Home"],["gear-id","Gear training"],["wiring-lessons","Wiring lessons"],["builder","System builder"],["plate","Troubleshooting plate"],["final-test","Final test"],["study","Study the gear"]];
+const VIEWS = [["home","Home"],["gear-id","Gear training"],["wiring-lessons","Wiring lessons"],["builder","System builder"],["plate","Trouble Shooting Test"],["final-test","Final test"],["study","Study the gear"]];
 const S = { view:"home" };
 const views = () => T.admin ? [...VIEWS, ["results","Results"]] : VIEWS;
 const Q = { len:"5", showMfr:true, sound:(() => { try { return localStorage.getItem("gearid-sound") !== "0"; } catch (e) { return true; } })(), rounds:[], r:0, place:{}, right:0, total:0, missed:[], sel:null, done:false,
@@ -2337,7 +2337,7 @@ const NAV = [
   { k:"home", label:"Home", view:"home" },
   { k:"train", label:"Training & games", items:["gear-id", "builder"] },
   { k:"learn", label:"Study", items:["study", "wiring-lessons"] },
-  { k:"plate", label:"Troubleshooting plate", view:"plate" },
+  { k:"plate", label:"Trouble Shooting Test", view:"plate" },
   { k:"final", label:"Final test", view:"final-test" }
 ];
 const viewName = k => (views().find(v => v[0] === k) || [k, k])[1];
@@ -2676,8 +2676,8 @@ function renderHome(){
   <h3 class="home-h">Hands-on</h3>
   <div class="card home-plate">
     <div class="well">${pic("Custom WP Plate")}</div>
-    <div><span class="home-tag">Practical</span><h4>Troubleshooting plate</h4><p>Test a real termination plate, plate side and wire side, and find the faults your trainer planted.</p></div>
-    <button class="btn" data-tab="plate">Go to the plate exercise</button>
+    <div><span class="home-tag">Practical</span><h4>Trouble Shooting Test</h4><p>Test a real termination plate, plate side and wire side, and find the faults your trainer planted.</p></div>
+    <button class="btn" data-tab="plate">Go to the Trouble Shooting Test</button>
   </div>`;
 }
 const DEFAULT_PIC = model => ITEMS.find(x => x.model === model) || null;
@@ -2686,11 +2686,11 @@ const DEFAULT_PIC = model => ITEMS.find(x => x.model === model) || null;
 /* The plate test lives in plate.js. It reads the plate, answer key, fault types and connectors from this page's store
    (plate/…), scores the test on submit, saves it to the training record through record() and offers the same email as the Final test. */
 function renderPlate(){
-  $("#app").innerHTML = `<div class="bar"><div><span class="eyebrow">Hands-on test</span><h2>Troubleshooting plate</h2>
+  $("#app").innerHTML = `<div class="bar"><div><span class="eyebrow">Hands-on test</span><h2>Trouble Shooting Test</h2>
     <p>Test the real termination plate line by line: the plate side (chassis termination) and the wire side (tail termination). Your trainer has planted faults to find.</p></div></div>
     <div id="plate-host"></div>`;
   if (window.__plate) window.__plate.mount($("#plate-host"));
-  else $("#plate-host").innerHTML = `<div class="card empty">The plate test didn't load. Reload the page to try again.</div>`;
+  else $("#plate-host").innerHTML = `<div class="card empty">The Trouble Shooting Test didn't load. Reload the page to try again.</div>`;
 }
 
 /* ================= STUDY ================= */
@@ -3626,7 +3626,7 @@ function renderResults(){
     <div class="kpi"><b>${people.filter(p => p.finals.some(a => a.pass)).length} / ${people.length}</b><span>Passed the final test</span></div>
   </div>
   <div class="tbl-wrap"><table>
-    <thead><tr><th>Technician</th><th>Final test</th><th>Plate test</th><th class="num">Gear ID last</th><th class="num">Gear ID best</th><th class="num">Top points</th><th class="num">Tests</th><th class="num">Builder best</th><th class="num">Builds</th><th>Last active</th></tr></thead>
+    <thead><tr><th>Technician</th><th>Final test</th><th>Trouble Shooting Test</th><th class="num">Gear ID last</th><th class="num">Gear ID best</th><th class="num">Top points</th><th class="num">Tests</th><th class="num">Builder best</th><th class="num">Builds</th><th>Last active</th></tr></thead>
     <tbody>${people.map(p => `<tr class="pick" data-pick="${esc(p.uid)}" aria-current="${p.uid === T.sel}" tabindex="0">
       <td><b data-uid="${esc(p.uid)}">…</b></td><td>${p.finalLast ? `<span class="pill ${p.finalLast.pass ? "ok" : "extra"}">${p.finalLast.pass ? "PASS" : "NOT YET"}</span> ${p.finalLast.overall}%${p.finals.length > 1 ? `<br><span class="muted" style="font-size:12px">best ${p.finalBest}% · ${p.finals.length} tries</span>` : ""}` : `<span class="muted">Not taken</span>`}</td><td>${p.plateLast ? `<span class="pill ${p.plateLast.pass ? "ok" : "extra"}">${p.plateLast.pass ? "PASS" : "NOT YET"}</span> ${p.plateLast.pct}%${p.plates.length > 1 ? `<br><span class="muted" style="font-size:12px">${p.plates.length} tries</span>` : ""}` : `<span class="muted">Not taken</span>`}</td><td class="num">${cell(p.gearLast)}</td><td class="num">${cell(p.gearBest)}</td><td class="num">${p.gearPts == null ? `<span class="muted">—</span>` : p.gearPts.toLocaleString()}</td><td class="num">${p.gear.length}</td>
       <td class="num">${cell(p.buildBest)}</td><td class="num">${p.builds.length}</td><td class="muted">${fmtD(p.last)}</td></tr>`).join("")}</tbody>
@@ -3635,7 +3635,7 @@ function renderResults(){
   ${sel ? `<div class="card panel"><h3>Attempts by <span data-uid="${esc(sel.uid)}">…</span></h3>
     <div class="tbl-wrap"><table><thead><tr><th>When</th><th>Test</th><th class="num">Score</th><th>Details</th></tr></thead><tbody>
     ${sel.at.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).map(a => `<tr><td class="muted">${fmtD(a.at)}</td>
-      <td>${a.kind === "final" ? `<b>Final test</b> <span class="pill ${a.pass ? "ok" : "extra"}">${a.pass ? "PASS" : "NOT YET"}</span>` : a.kind === "plate" ? `<b>Plate test</b> <span class="pill ${a.pass ? "ok" : "extra"}">${a.pass ? "PASS" : "NOT YET"}</span>` : a.kind === "gear" ? `Gear training${a.showMfr ? "" : " (no manufacturer)"}` : a.kind === "build" ? `System builder${a.secTotal ? ` · sections ${a.secOK}/${a.secTotal}` : ""}` : "Practice: " + esc(SCEN_NAME[a.scen] || a.scen)}</td>
+      <td>${a.kind === "final" ? `<b>Final test</b> <span class="pill ${a.pass ? "ok" : "extra"}">${a.pass ? "PASS" : "NOT YET"}</span>` : a.kind === "plate" ? `<b>Trouble Shooting Test</b> <span class="pill ${a.pass ? "ok" : "extra"}">${a.pass ? "PASS" : "NOT YET"}</span>` : a.kind === "gear" ? `Gear training${a.showMfr ? "" : " (no manufacturer)"}` : a.kind === "build" ? `System builder${a.secTotal ? ` · sections ${a.secOK}/${a.secTotal}` : ""}` : "Practice: " + esc(SCEN_NAME[a.scen] || a.scen)}</td>
       <td class="num">${cell(pctOf(a))}${a.score != null ? `<br><span class="muted" style="font-size:12px">${a.score.toLocaleString()} pts</span>` : ""}</td>
       <td class="wrap">${a.kind === "plate" ? `${a.name ? `Taken as <b>${esc(a.name)}</b>. ` : ""}Found ${a.found} of ${a.faultCount} faults (${a.named} named right), ${a.falseCall} false call${a.falseCall === 1 ? "" : "s"}, ${a.acc}% of checks correct.${a.missedList?.length ? ` Missed: ${a.missedList.map(esc).join(", ")}.` : ""}${a.falseList?.length ? ` False calls: ${a.falseList.map(esc).join(", ")}.` : ""}` : a.kind === "final" ? `${a.name ? `Taken as <b>${esc(a.name)}</b>. ` : ""}Part 1: ${a.part1?.right} of ${a.part1?.total} parts (${a.part1?.pct}%). Part 2: ${a.part2?.got} of ${a.part2?.total} cables${a.part2?.flow != null ? `, ${a.part2.flow} left to right` : ""} (${a.part2?.pct}%).${a.missed?.length ? ` Missed: ${a.missed.map(esc).join(", ")}` : ""}` : a.kind === "gear" ? `${a.right} of ${a.total} correct${a.missed?.length ? `. Missed: ${a.missed.map(esc).join(", ")}` : ""}`
         : `${a.ok} of ${a.total} connections right${a.type ? `, ${a.type} wrong cable` : ""}${a.extra ? `, ${a.extra} extra` : ""}${a.miss ? `, ${a.miss} missing` : ""}`}</td></tr>`).join("")}
