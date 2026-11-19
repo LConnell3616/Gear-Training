@@ -212,6 +212,10 @@ svg.flow{display:block;width:100%;min-width:820px;height:auto;touch-action:none;
 .wire{fill:none;stroke-width:4;stroke-linecap:round;cursor:pointer}
 .wire-hit{fill:none;stroke:transparent;stroke-width:18;cursor:pointer}
 .wire-halo{fill:none;stroke-width:7.5;stroke-linecap:round;opacity:.6;pointer-events:none}
+.wlabel.wl-ok rect{stroke:var(--pass);stroke-width:2.5}.wlabel.wl-ok .wl-mark{fill:var(--pass)}
+.wlabel.wl-type rect{stroke:var(--warn);stroke-width:2.5}.wlabel.wl-type .wl-mark{fill:var(--warn)}
+.wlabel.wl-extra rect{stroke:var(--fail);stroke-width:2.5}.wlabel.wl-extra .wl-mark{fill:var(--fail)}
+.wl-mark{font-weight:900}
 #btemp,#temp{filter:drop-shadow(0 0 1.5px rgba(128,128,128,.95))}
 .wire-hit:hover + .wire{stroke-width:6}
 .wlabel rect{fill:var(--card);stroke:var(--line-strong)}
@@ -1743,11 +1747,12 @@ const bSecs = () => B.secs != null ? B.secs : B.t0 ? (Date.now() - B.t0) / 1000 
 setInterval(() => { const el = $("#bclock"); if (el) el.textContent = fmtClock(bSecs()); }, 500);
 function bWiresSVG(g){
   const revSet = new Set(g ? g.rev.map(x => x.w) : []);
-  const cls = w => !g ? "" : revSet.has(w) ? "g-type" : g.ok.some(x => x.w === w) ? "g-ok" : g.type.some(x => x.w === w) ? "g-type" : "g-extra";
+  const cls = w => !g ? "" : revSet.has(w) ? "wl-type" : g.ok.some(x => x.w === w) ? "wl-ok" : g.type.some(x => x.w === w) ? "wl-type" : "wl-extra";
+  const mark = { "wl-ok":"✓ ", "wl-type":"! ", "wl-extra":"✕ " };
   const route = !B_FAST;
-  let out = B.wires.map((w, i) => { const [d, mx, my] = bWirePath(bNode(w.a), bNode(w.b), route), cb = CABLE[w.cable], lw = cb.short.length * 7.4 + 14;
-    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${cls(w)}" d="${d}" style="stroke:${cb.color}"/>${cls(w) ? "" : stripeSVG(cb, d)}
-      <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g></g>`; }).join("");
+  let out = B.wires.map((w, i) => { const [d, mx, my] = bWirePath(bNode(w.a), bNode(w.b), route), cb = CABLE[w.cable], c = cls(w), lw = cb.short.length * 7.4 + 14 + (c ? 12 : 0);
+    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire" d="${d}" style="stroke:${cb.color}"/>${stripeSVG(cb, d)}
+      <g class="wlabel ${c}" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${c ? `<tspan class="wl-mark">${mark[c]}</tspan>` : ""}${cb.short}</text></g></g>`; }).join("");
   if (g && B.reveal) out += g.miss.map(e => { const [d] = bWirePath(bNode(e[0]), bNode(e[1]), route); return `<path class="wire g-miss" d="${d}"/>`; }).join("");
   return out;
 }
@@ -1786,6 +1791,7 @@ function renderBuilder(){
     <div class="bar"><h3>${g.ok.length} of ${total} connections correct${g.extra.length ? `, ${g.extra.length} extra` : ""}</h3>
       <div class="score"><div class="stat"><b>${Math.round(Math.max(0, g.ok.length - g.extra.length) / total * 100)}%</b><span>Wiring</span></div><div class="stat"><b>${flowOK} / ${g.ok.length + g.type.length}</b><span>Left to right</span></div><div class="stat"><b>${secGood} / ${B.nodes.length}</b><span>Sections</span></div><div class="stat"><b>${fmtClock(B.secs || 0)}</b><span>Time</span></div></div></div>
     <p class="hint">Points: 100 per correct cable, 40 for the right path on the wrong cable, −50 per extra cable, 25 for every connection that flows left to right, and 20 for every block in the right section. A perfect build adds 500.</p>
+    <p class="hint">On the canvas, each cable keeps its own color and its label shows the result: <b style="color:var(--pass)">✓</b> correct, <b style="color:var(--warn)">!</b> wrong cable or flowing backwards, <b style="color:var(--fail)">✕</b> not needed. Change anything and the marks clear until you check again.</p>
     <div class="saveline-slot">${saveLine()}</div>
     <ul class="fb-list">
       ${g.badSec.map(n => `<li><span class="pill type">Wrong section</span><span><b>${esc(n.it.model)}</b> belongs in ${secOf(n) === "net" ? "the Audio or Lighting section" : esc(SEC_NAME[secOf(n)])}</span><span class="why">${secOf(n) === "spare" ? `${esc(n.it.model)} is a ${esc(what(n.it).toLowerCase())} and isn't used in this install, so park it in Spare parts.` : secOf(n) === "net" ? "The switch is shared by audio and lighting, so it can sit in either section. Its cables cross into the other one." : `${esc(n.it.model)} is part of the ${esc(SEC_NAME[secOf(n)].toLowerCase())} system.`}</span></li>`).join("")}
@@ -1796,7 +1802,7 @@ function renderBuilder(){
       ${g.ok.length === total && !g.extra.length && !g.rev.length && !g.badSec.length ? `<li><span class="pill ok">Perfect</span><span>Every cable is right, every block is in its section, and the whole install reads left to right.</span></li>` : ""}
     </ul></div>` : ""}`;
   if ($("#bshuffle")) $("#bshuffle").onclick = () => { bNew(); renderBuilder(); };
-  $("#bundo").onclick = () => { B.wires.pop(); B.confirm = false; renderBuilder(); };
+  $("#bundo").onclick = () => { B.wires.pop(); B.confirm = false; B.graded = false; B.reveal = false; renderBuilder(); };
   $("#bclear").onclick = () => { B.wires = []; B.graded = false; B.reveal = false; B.pts = null; renderBuilder(); };
   if ($("#breveal")) $("#breveal").onclick = () => { B.reveal = !B.reveal; renderBuilder(); };
   $("#bcheck").onclick = () => {
@@ -1818,14 +1824,14 @@ function renderBuilder(){
     renderBuilder();
     if (perfect){ confetti(160); combo("Install complete!"); SFX.win(); } else SFX.good(1);
   };
-  document.querySelectorAll("[data-bwire]").forEach(el => el.addEventListener("click", () => { B.wires.splice(+el.dataset.bwire, 1); renderBuilder(); }));
+  document.querySelectorAll("[data-bwire]").forEach(el => el.addEventListener("click", () => { B.wires.splice(+el.dataset.bwire, 1); B.graded = false; B.reveal = false; renderBuilder(); }));
   bWire();
 }
 function bAddWire(a, b){
   if (a === b) return;
   const k = pairKey(a, b), ex = B.wires.find(w => pairKey(w.a, w.b) === k);
   if (ex) ex.cable = B.cable; else B.wires.push({a, b, cable:B.cable});
-  B.confirm = false;
+  B.confirm = false; B.graded = false; B.reveal = false;
   if (!B.t0) B.t0 = Date.now();
   if (B.secs != null){ B.t0 = Date.now() - B.secs * 1000; B.secs = null; }
   B.sel = null; B.pend = null; renderBuilder();
@@ -1902,7 +1908,7 @@ function bWire(){
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
       temp.setAttribute("d", "");
       if (moved && port){ const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-bnode]"); if (t && e.type === "pointerup") bAddWire(id, t.dataset.bnode); return; }
-      if (moved){ n.x = Math.round(n.x / 10) * 10; n.y = Math.round(n.y / 10) * 10; renderBuilder(); return; }
+      if (moved){ n.x = Math.round(n.x / 10) * 10; n.y = Math.round(n.y / 10) * 10; B.graded = false; B.reveal = false; renderBuilder(); return; }
       if (B.pend){ const a = B.pend; if (a === id){ B.pend = null; renderBuilder(); } else bAddWire(a, id); return; }
       if (!B.test && isDoubleTap(id)){ B.sel = null; renderBuilder(); showGearInfo(n.it); return; }
       if (B.sel && B.sel !== id) bAddWire(B.sel, id); else { B.sel = B.sel === id ? null : id; renderBuilder(); }
