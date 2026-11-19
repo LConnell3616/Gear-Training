@@ -454,6 +454,24 @@ a.btn{text-decoration:none}
 .ls-sum li b{font-weight:700}
 .ls-chip{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;color:var(--ci,#fff);background:var(--c);box-shadow:inset 0 0 0 1px rgba(127,127,127,.5)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.confetti,.combo,.floater{display:none}.ls-draw{stroke-dashoffset:0}}
+/* tablets and phones (iPad): no double-tap zoom or tap delay; Safari's visible-height unit; drawing canvases fit the
+   screen instead of scrolling sideways (a finger on a canvas drags gear, so it can't also scroll it); bigger tap targets */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
+.board-wrap .tray{max-height:calc(100dvh - 24px)}
+.ginfo{max-height:calc(100dvh - 32px)}
+.rotate-tip{display:none}
+@media (pointer:coarse){
+  svg.flow{min-width:0!important}
+  .bnode .bport circle:first-child{r:34px}
+  .bnode .bout{r:10px}
+  .ls-dots{gap:10px}
+  .ls-dot{width:20px;height:20px}
+  .check input{width:20px;height:20px}
+  .navmenu button{padding:13px 14px}
+}
+@media (pointer:coarse) and (orientation:portrait){
+  .rotate-tip{display:block;font-size:13px;color:var(--muted);margin:0}
+}
 </style>
 
 <header class="top">
@@ -802,6 +820,8 @@ textarea{font:inherit;font-family:var(--font-mono);font-size:14px;color:inherit;
 .check{display:inline-flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
 .loading{padding:48px 0;text-align:center;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* touch screens (iPad): finger-sized Pass/Fail, tabs and fault pickers */
+@media (pointer:coarse){.seg button{padding:11px 0;min-width:66px}.subnav button{padding:10px 18px}.notes select,.notes input{min-height:42px}.face-switch button{padding:10px 16px}}
 `;
 /* Gear ID & Signal Flow: Troubleshooting plate module. Gear ID calls window.__plate.mount(el) whenever its Troubleshooting plate tab opens. */
 let R = null, HOST = null;
@@ -2383,10 +2403,13 @@ const mult = s => Math.min(3, 1 + (s - 1) * 0.5);
 
 /* ---- sound (Web Audio, starts after the first click) ---- */
 let AC = null;
+/* iPad Safari only lets sound start inside a tap: wake the audio on every tap so timer sounds can play later */
+document.addEventListener("pointerdown", () => { if (AC && AC.state !== "running") AC.resume().catch(() => {}); }, {passive:true});
 function tone(freq, dur, type = "sine", vol = .08, at = 0){
   if (!Q.sound) return;
   try {
     AC ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
     const t = AC.currentTime + at, o = AC.createOscillator(), g = AC.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
@@ -3201,7 +3224,7 @@ function renderBuilder(){
   const total = B.edges.length;
   $("#app").innerHTML = `
   <div class="bar"><div><span class="eyebrow">${B.test ? "Final test · Part 2 of 2" : "System builder · all three systems"}</span><h2>Build the whole install</h2>
-    <p>Every piece of gear for the audio, video and lighting systems is scattered below. Drag each block into its section (<b>Audio</b>, <b>Video</b> or <b>Lighting</b>) and line it up so the signal flows <b>left to right</b>: sources on the left, outputs on the right. The network switch serves both audio and lighting, so put it in either section and run cables across. Then drag a cable out of the <b>Wire box</b>, drop it on the block where the signal starts, and click the block it goes to. ${B.test ? " You submit once and no answers are shown until the end. Correct cables count for 70% of this part, left-to-right flow 15% and sections 15%." : ""}</p></div>
+    <p>Every piece of gear for the audio, video and lighting systems is scattered below. Drag each block into its section (<b>Audio</b>, <b>Video</b> or <b>Lighting</b>) and line it up so the signal flows <b>left to right</b>: sources on the left, outputs on the right. The network switch serves both audio and lighting, so put it in either section and run cables across. Then drag a cable out of the <b>Wire box</b>, drop it on the block where the signal starts, and click the block it goes to. ${B.test ? " You submit once and no answers are shown until the end. Correct cables count for 70% of this part, left-to-right flow 15% and sections 15%." : ""}</p><p class="rotate-tip">Tip: turn your iPad sideways for a bigger build area.</p></div>
     <div class="bar-r"><div class="hud"><div class="stat"><b id="bclock">${fmtClock(bSecs())}</b><span>Time</span></div>${B.test ? "" : `<div class="stat big"><b>${B.pts != null ? B.pts.toLocaleString() : "—"}</b><span>Points</span></div>`}</div></div></div>
   <div class="bwork">${wireBoxHTML()}
   <div class="canvas-wrap"><svg class="flow bflow ${B.pend ? "pending" : ""}" id="bflow" viewBox="0 0 ${BVW} ${BVH}">
@@ -3383,7 +3406,9 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeGearInf
 const _tap = { id:null, t:0 };
 function isDoubleTap(id){ const now = Date.now(), dbl = _tap.id === id && now - _tap.t < 400; _tap.id = dbl ? null : id; _tap.t = now; return dbl; }
 /* static views (lessons) use plain dblclick on [data-gid] */
-document.addEventListener("dblclick", e => { const el = e.target.closest("[data-gid]"); if (el && S.view === "wiring-lessons") showGearInfo(BY[el.dataset.gid]); });
+/* touch screens: Safari zooms on a double tap instead of sending dblclick, so count taps too */
+document.addEventListener("click", e => { const el = e.target.closest?.("[data-gid]"); if (el && S.view === "wiring-lessons" && isDoubleTap("ls:" + el.dataset.gid) && !$("#ginfo")) showGearInfo(BY[el.dataset.gid]); });
+document.addEventListener("dblclick", e => { const el = e.target.closest("[data-gid]"); if (el && S.view === "wiring-lessons" && !$("#ginfo")) showGearInfo(BY[el.dataset.gid]); });
 
 /* ================= FINAL TEST ================= */
 const RESULTS_TO = "lconnell@summitintegrated.com";
