@@ -302,8 +302,35 @@ footer .wrap{padding-block:16px}
 .ready .card{padding:24px 28px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;box-shadow:var(--shadow-md);margin-inline:12px}
 .finals{display:flex;gap:18px 40px;flex-wrap:wrap}
 .finals span{font-size:13px}
+/* system builder: wire box beside the canvas */
+.bwork{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;align-items:start}
+.bwork > *{min-width:0}
+.wirebox{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);padding:12px;display:flex;flex-direction:column;gap:10px;z-index:3;
+  background:linear-gradient(180deg,var(--surface),var(--card));border:2px solid var(--line-strong)}
+.wb-head h3{margin:0;font-size:16px;font-weight:800}
+.wb-head span{font-size:12px}
+.wb-spools{display:flex;flex-direction:column;gap:6px}
+.wb-spool{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:var(--r-md);padding:4px 8px 4px 4px;text-align:left;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.wb-spool:hover{border-color:var(--accent)}
+.wb-spool:active{cursor:grabbing}
+.wb-spool[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg);background:var(--surface)}
+.wb-spool .spool{width:54px;height:36px;flex:none}
+.wb-name{font-size:12.5px;font-weight:600;line-height:1.25}
+.wb-pend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px;border:1px solid var(--accent);background:var(--blue-soft);border-radius:var(--r-md);padding:8px}
+.wb-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.wb-ghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:10px;background:var(--card);border:1px solid var(--accent);box-shadow:var(--shadow-md);font-size:12px}
+.wb-ghost .spool{width:58px;height:38px}
+.bnode.dropto .nbox{stroke:var(--accent);stroke-width:4}
+.bnode.pendsrc .nbox{stroke:var(--accent);stroke-width:4;stroke-dasharray:7 5}
+.bflow.pending .bnode{cursor:pointer}
+@media (max-width:820px){
+  .bwork{grid-template-columns:1fr}
+  .wirebox{position:static}
+  .wb-spools{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .wb-spool{flex-direction:column;flex:none;width:96px;padding:6px;text-align:center}
+}
 /* system builder */
-svg.flow.bflow{min-width:1100px}
+svg.flow.bflow{min-width:880px}
 .bnode{cursor:grab}
 .bnode:active{cursor:grabbing}
 .bnode .bout{fill:var(--accent);stroke:var(--card);stroke-width:2.5}
@@ -1586,7 +1613,7 @@ function bNew(){
   const used = new Set(nodes.map(n => n.it.cat));
   const slots = shuffle(Array.from({length: 10 * 9}, (_, i) => i));
   shuffle(nodes).forEach((n, i) => { const s = slots[i], c = s % 10, r = Math.floor(s / 10); n.x = 14 + c * 148; n.y = 46 + r * 121; });
-  Object.assign(B, { nodes, edges, wires:[], sel:null, t0:0, secs:null, graded:false, reveal:false, pts:null, built:true });
+  Object.assign(B, { pend:null, nodes, edges, wires:[], sel:null, t0:0, secs:null, graded:false, reveal:false, pts:null, built:true });
 }
 function bWirePath(a, b){
   const x1 = a.x + BW, y1 = a.y + BH/2, x2 = b.x, y2 = b.y + BH/2, dx = Math.max(50, Math.abs(x2 - x1) / 2);
@@ -1617,7 +1644,7 @@ function renderBuilder(){
   if (!B.built) bNew();
   const g = B.graded && !B.test ? bGrade() : null;
   const nodesSVG = B.nodes.map(n => { const m = n.it.model.length > 15 ? n.it.model.slice(0, 14) + "…" : n.it.model;
-    return `<g class="node bnode ${B.sel === n.id ? "sel" : ""}" data-bnode="${n.id}" transform="translate(${n.x},${n.y})">
+    return `<g class="node bnode ${B.sel === n.id ? "sel" : ""} ${B.pend === n.id ? "pendsrc" : ""}" data-bnode="${n.id}" transform="translate(${n.x},${n.y})">
       <rect class="nbox" width="${BW}" height="${BH}" rx="11"/><rect class="nwell" x="7" y="7" width="${BW - 14}" height="56" rx="6"/>
       <image x="12" y="9" width="${BW - 24}" height="52" href="${photoOf(n.it) || gearURI(n.it)}" ${photoOf(n.it) ? `style="mix-blend-mode:multiply"` : ""} preserveAspectRatio="xMidYMid meet"/>
       <text x="${BW/2}" y="81" text-anchor="middle" font-size="14" font-weight="800">${esc(m)}</text>
@@ -1628,18 +1655,18 @@ function renderBuilder(){
   const total = B.edges.length;
   $("#app").innerHTML = `
   <div class="bar"><div><span class="eyebrow">${B.test ? "Final test · Part 2 of 2" : "System builder · all three systems"}</span><h2>Build the whole install</h2>
-    <p>Every piece of gear for the audio, video and lighting systems is scattered below. Drag each block into its section (<b>Audio</b>, <b>Video</b> or <b>Lighting</b>) and line it up so the signal flows <b>left to right</b>: sources on the left, outputs on the right. The network switch serves both audio and lighting, so put it in either section and run cables across. Then pick a cable and drag from a block's <b>output dot</b> on its right edge to the next block. ${B.test ? " You submit once and no answers are shown until the end. Correct cables count for 70% of this part, left-to-right flow 15% and sections 15%." : ""}</p></div>
+    <p>Every piece of gear for the audio, video and lighting systems is scattered below. Drag each block into its section (<b>Audio</b>, <b>Video</b> or <b>Lighting</b>) and line it up so the signal flows <b>left to right</b>: sources on the left, outputs on the right. The network switch serves both audio and lighting, so put it in either section and run cables across. Then drag a cable out of the <b>Wire box</b>, drop it on the block where the signal starts, and click the block it goes to. ${B.test ? " You submit once and no answers are shown until the end. Correct cables count for 70% of this part, left-to-right flow 15% and sections 15%." : ""}</p></div>
     <div class="bar-r"><div class="hud"><div class="stat"><b id="bclock">${fmtClock(bSecs())}</b><span>Time</span></div>${B.test ? "" : `<div class="stat big"><b>${B.pts != null ? B.pts.toLocaleString() : "—"}</b><span>Points</span></div>`}</div></div></div>
-  <div class="cables" role="group" aria-label="Cable type"><span class="lbl">Cable</span>${Object.entries(CABLE).map(([k,c]) => `<button class="cbtn" data-bcable="${k}" aria-pressed="${B.cable===k}"><i style="background:${c.color}"></i>${c.name}</button>`).join("")}</div>
-  <div class="canvas-wrap"><svg class="flow bflow" id="bflow" viewBox="0 0 ${BVW} ${BVH}">
+  <div class="bwork">${wireBoxHTML()}
+  <div class="canvas-wrap"><svg class="flow bflow ${B.pend ? "pending" : ""}" id="bflow" viewBox="0 0 ${BVW} ${BVH}">
     <path class="grid-bg" fill="none" d="${rep(Math.ceil(BVW/30),i=>`M${i*30} 0V${BVH}`)}${rep(Math.ceil(BVH/30),i=>`M0 ${i*30}H${BVW}`)}"/>
     ${BANDS.map(b => `<g class="bband"><rect x="2" y="${b.y + 3}" width="${BVW - 4}" height="${b.h - 6}" rx="14" style="fill:${b.c};stroke:${b.c}"/><text x="${BVW - 18}" y="${b.y + b.h - 14}" text-anchor="end" style="fill:${b.c}">${esc(b.label.toUpperCase())}</text></g>`).join("")}
     <g class="bguide"><text x="24" y="26">SOURCES</text><text x="${BVW/2}" y="26" text-anchor="middle">PROCESSING &amp; DISTRIBUTION</text><text x="${BVW - 24}" y="26" text-anchor="end">OUTPUTS</text>
       <path d="M150 21 H${BVW/2 - 190} M${BVW/2 + 190} 21 H${BVW - 140}" marker-end="url(#barrow)"/></g>
     <defs><marker id="barrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="barrowhead"/></marker></defs>
     <g id="bwires">${bWiresSVG(g)}</g><path id="btemp" class="wire" d="" style="stroke:${CABLE[B.cable].color};stroke-dasharray:6 6"/>
-    <g id="bnodes">${nodesSVG}</g></svg></div>
-  <p class="hint">${B.wires.length} cable${B.wires.length === 1 ? "" : "s"} run. Drag a block's body to move it; drag from its blue output dot to run a cable. On a phone, tap one block and then another to connect them. Tap a cable to remove it.${B.test ? "" : " Double-click any block to see what it is."}</p>
+    <g id="bnodes">${nodesSVG}</g></svg></div></div>
+  <p class="hint">${B.wires.length} cable${B.wires.length === 1 ? "" : "s"} run. Drag a block's body to move it. You can also drag from a block's blue output dot, or tap one block and then another, to run the cable selected in the Wire box. Tap a cable to remove it.${B.test ? "" : " Double-click any block to see what it is."}</p>
   <div class="actions" style="justify-content:space-between">
     <div style="display:flex;gap:8px;flex-wrap:wrap">${B.test ? "" : `<button class="btn small" id="bshuffle">Shuffle a new layout</button>`}<button class="btn small" id="bundo" ${B.wires.length ? "" : "disabled"}>Undo</button><button class="btn small" id="bclear" ${B.wires.length ? "" : "disabled"}>Clear cables</button></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${g ? `<button class="btn" id="breveal">${B.reveal ? "Hide answer" : "Show missing cables"}</button>` : ""}<button class="btn primary" id="bcheck" ${B.wires.length ? "" : "disabled"}>${B.test ? (B.confirm ? "Submit? Click again to lock it in" : "Submit and finish the test") : g ? "Re-check" : "Check my build"}</button></div>
@@ -1657,7 +1684,6 @@ function renderBuilder(){
       ${g.miss.length ? `<li><span class="pill miss">Missing</span><span>${B.reveal ? g.miss.map(e => `<b>${esc(bNode(e[0]).it.model)} → ${esc(bNode(e[1]).it.model)}</b> on ${CABLE[cab(e)].name}`).join("<br>") : `${g.miss.length} connection${g.miss.length === 1 ? " is" : "s are"} still missing. Tap Show missing cables to see them.`}</span></li>` : ""}
       ${g.ok.length === total && !g.extra.length && !g.rev.length && !g.badSec.length ? `<li><span class="pill ok">Perfect</span><span>Every cable is right, every block is in its section, and the whole install reads left to right.</span></li>` : ""}
     </ul></div>` : ""}`;
-  document.querySelectorAll("[data-bcable]").forEach(b => b.onclick = () => { B.cable = b.dataset.bcable; renderBuilder(); });
   if ($("#bshuffle")) $("#bshuffle").onclick = () => { bNew(); renderBuilder(); };
   $("#bundo").onclick = () => { B.wires.pop(); B.confirm = false; renderBuilder(); };
   $("#bclear").onclick = () => { B.wires = []; B.graded = false; B.reveal = false; B.pts = null; renderBuilder(); };
@@ -1691,12 +1717,64 @@ function bAddWire(a, b){
   B.confirm = false;
   if (!B.t0) B.t0 = Date.now();
   if (B.secs != null){ B.t0 = Date.now() - B.secs * 1000; B.secs = null; }
-  B.sel = null; renderBuilder();
+  B.sel = null; B.pend = null; renderBuilder();
 }
+/* ---- the Wire box: drag a spool onto the block where the signal starts, then click where it goes ---- */
+const spoolSVG = c => `<svg class="spool" viewBox="0 0 66 44" aria-hidden="true">
+  <path d="M38 31 C50 31 50 39 58 39" fill="none" stroke="${c.color}" stroke-width="3.2" stroke-linecap="round"/>
+  <rect x="56" y="34.5" width="8" height="9" rx="1.5" fill="#c9ced3" stroke="#6b737b" stroke-width=".8"/>
+  <ellipse cx="12" cy="22" rx="5.5" ry="19" fill="#3a424b"/>
+  <rect x="12" y="7" width="26" height="30" fill="${c.color}"/>
+  ${rep(7, i => `<path d="M${14 + i * 3.6} 7 L${12 + i * 3.6} 37" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>`)}
+  <rect x="12" y="7" width="26" height="30" fill="none" stroke="#000" stroke-opacity=".18"/>
+  <ellipse cx="38" cy="22" rx="5.5" ry="19" fill="#5b636b"/>
+  <ellipse cx="38" cy="22" rx="2.2" ry="6.5" fill="#1d2126"/></svg>`;
+function wireBoxHTML(){
+  const pend = B.pend ? bNode(B.pend) : null;
+  return `<aside class="card wirebox" aria-label="Wire box">
+    <div class="wb-head"><h3>Wire box</h3><span class="muted">Drag a cable onto a block</span></div>
+    ${pend ? `<div class="wb-pend" role="status"><span class="wb-dot" style="background:${CABLE[B.cable].color}"></span><span>Running <b>${esc(CABLE[B.cable].short)}</b> from <b>${esc(pend.it.model)}</b>. Click the block it goes to.</span><button class="btn small" id="bpendx">Cancel</button></div>` : ""}
+    <div class="wb-spools">${Object.entries(CABLE).map(([k, c]) => `<button class="wb-spool" data-spool="${k}" aria-pressed="${B.cable === k}" title="${esc(c.name)}">${spoolSVG(c)}<span class="wb-name">${esc(c.name)}</span></button>`).join("")}</div>
+  </aside>`;
+}
+function bWireBox(){
+  if ($("#bpendx")) $("#bpendx").onclick = () => { B.pend = null; renderBuilder(); };
+  document.querySelectorAll("[data-spool]").forEach(el => el.addEventListener("pointerdown", ev => {
+    if (ev.button !== 0) return; ev.preventDefault();
+    const k = el.dataset.spool, sx = ev.clientX, sy = ev.clientY; let ghost = null, over = null;
+    const move = e => {
+      if (!ghost && Math.hypot(e.clientX - sx, e.clientY - sy) > 6){
+        ghost = document.createElement("div"); ghost.className = "wb-ghost"; ghost.innerHTML = spoolSVG(CABLE[k]) + `<b>${esc(CABLE[k].short)}</b>`;
+        document.body.appendChild(ghost); document.body.classList.add("dragging");
+      }
+      if (!ghost) return;
+      ghost.style.transform = `translate(${e.clientX - 34}px,${e.clientY - 26}px)`;
+      const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-bnode]");
+      if (over !== t){ over?.classList.remove("dropto"); over = t; over?.classList.add("dropto"); }
+    };
+    const up = e => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+      document.body.classList.remove("dragging"); over?.classList.remove("dropto");
+      B.cable = k;
+      if (ghost){ ghost.remove(); if (over && e.type === "pointerup"){ B.pend = over.dataset.bnode; B.sel = null; SFX.tick(); } }
+      else B.pend = null;
+      renderBuilder();
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+  }));
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && B.pend){ B.pend = null; if (S.view === "builder" || S.view === "final-test") renderBuilder(); } });
 function bWire(){
+  bWireBox();
   const svg = $("#bflow"), temp = $("#btemp");
   const pt = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
   const redrawWires = () => { $("#bwires").innerHTML = bWiresSVG(B.graded ? bGrade() : null); };
+  if (B.pend){
+    const src = bNode(B.pend);
+    temp.setAttribute("d", `M${src.x + BW} ${src.y + BH/2} l1 0`);
+    svg.addEventListener("pointermove", e => { if (!B.pend) return; const q = pt(e); temp.setAttribute("d", `M${src.x + BW} ${src.y + BH/2} C${src.x + BW + 60} ${src.y + BH/2} ${q.x - 60} ${q.y} ${q.x} ${q.y}`); });
+    svg.addEventListener("pointerdown", e => { if (B.pend && !e.target.closest("[data-bnode]")){ B.pend = null; renderBuilder(); } });
+  }
   svg.querySelectorAll("[data-bnode]").forEach(el => el.addEventListener("pointerdown", ev => {
     if (ev.button !== 0) return; ev.preventDefault();
     const id = el.dataset.bnode, n = bNode(id), port = ev.target.closest("[data-bport]");
@@ -1714,6 +1792,7 @@ function bWire(){
       temp.setAttribute("d", "");
       if (moved && port){ const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-bnode]"); if (t && e.type === "pointerup") bAddWire(id, t.dataset.bnode); return; }
       if (moved){ n.x = Math.round(n.x / 10) * 10; n.y = Math.round(n.y / 10) * 10; renderBuilder(); return; }
+      if (B.pend){ const a = B.pend; if (a === id){ B.pend = null; renderBuilder(); } else bAddWire(a, id); return; }
       if (!B.test && isDoubleTap(id)){ B.sel = null; renderBuilder(); showGearInfo(n.it); return; }
       if (B.sel && B.sel !== id) bAddWire(B.sel, id); else { B.sel = B.sel === id ? null : id; renderBuilder(); }
     };
