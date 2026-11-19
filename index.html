@@ -196,6 +196,9 @@ body.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .cables .lbl{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
 .cbtn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);background:var(--card);border-radius:999px;padding:5px 12px 5px 8px;font-size:13px;font-weight:600}
 .cbtn i{width:22px;height:5px;border-radius:3px;display:inline-block}
+.wire-stripe{fill:none;stroke-width:4;stroke-dasharray:7 7;pointer-events:none}
+.ls-stripe-in{opacity:0;animation:lsfade .3s .85s forwards;stroke-width:6}
+@keyframes lsfade{to{opacity:1}}
 .cbtn[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg);background:var(--surface)}
 .canvas-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--canvas)}
 svg.flow{display:block;width:100%;min-width:820px;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -1291,7 +1294,7 @@ const CABLE = {
   /* color = the cable jacket; halo = outline that keeps it visible on light and dark canvases; ink = text on a chip of that color */
   xlr:{name:"XLR (analog audio)", short:"XLR", color:"#17191c", halo:"#c9d0d8", ink:"#ffffff"},
   aes:{name:"AES/EBU (110Ω digital)", short:"AES", color:"#8b929a", halo:"#14181c", ink:"#14181c"},
-  cat6:{name:"CAT6 / etherCON", short:"CAT6", color:"#a25cf2", halo:"#14181c", ink:"#ffffff"},
+  cat6:{name:"CAT6 / etherCON", short:"CAT6", color:"#f2c600", stripe:"#17191c", halo:"#14181c", ink:"#14181c"},
   sdi:{name:"SDI coax (BNC)", short:"SDI", color:"#5a1f8f", halo:"#c9d0d8", ink:"#ffffff"},
   hdmi:{name:"HDMI", short:"HDMI", color:"#1f6fd1", halo:"#0b1220", ink:"#ffffff"},
   spk:{name:"Speaker cable", short:"SPK", color:"#f6f6f3", halo:"#14181c", ink:"#14181c"},
@@ -1299,6 +1302,8 @@ const CABLE = {
   fiber:{name:"Fiber (LC)", short:"Fiber", color:"#f2c600", halo:"#14181c", ink:"#14181c"}
 };
 const COLX = [20, 222, 424, 626, 828, 1030];
+const stripeSVG = (cb, d, extra = "", cls = "") => cb.stripe ? `<path class="wire-stripe ${cls}" d="${d}" style="stroke:${cb.stripe}" ${extra}/>` : "";
+const swatchBG = cb => cb.stripe ? `repeating-linear-gradient(135deg,${cb.color} 0 5px,${cb.stripe} 5px 10px)` : cb.color;
 const SCEN = [
   { key:"audio", name:"Worship audio", brief:"A mic plugs into the stage floor box. Get it through the console and out of the main array and the subs.",
     nodes:[ ["fb","Custom FB Plate",0,250,"Floor box"], ["rio","Rio3224-D3",1,250,"Stage rack"], ["sw","GSM4248PX (M4250)",2,60,"Primary rack"],
@@ -1376,7 +1381,7 @@ function renderFlow(){
   const gclass = w => { if (!g) return ""; const k = pairKey(w.a,w.b);
     if (g.ok.some(x => x.w === w)) return "g-ok"; if (g.type.some(x => x.w === w)) return "g-type"; return "g-extra"; };
   const wireSVG = wires.map((w, i) => { const [d, mx, my] = wirePath(N[w.a], N[w.b]); const cb = CABLE[w.cable]; const lw = cb.short.length * 7.4 + 14;
-    return `<g data-wire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${gclass(w)}" d="${d}" style="stroke:${cb.color}"/>
+    return `<g data-wire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${gclass(w)}" d="${d}" style="stroke:${cb.color}"/>${gclass(w) ? "" : stripeSVG(cb, d)}
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g></g>`; }).join("");
   const missSVG = g && FL.reveal ? g.miss.map(e => { const [d, mx, my] = wirePath(N[e[0]], N[e[1]]); const cb = CABLE[cab(e)]; const lw = cb.short.length*7.4+14;
     return `<path class="wire g-miss" d="${d}"/><g class="wlabel" transform="translate(${mx-lw/2},${my-10})"><rect width="${lw}" height="20" rx="10" style="stroke:var(--blue)"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}?</text></g>`; }).join("") : "";
@@ -1523,7 +1528,7 @@ function renderLessons(){
   const wiresSVG = sc.edges.slice(0, shown).map((e, i) => {
     const [d, mx, my] = wirePath(N[e[0]], N[e[1]]), cb = CABLE[cab(e)], isCur = cur && i === k - 1, lw = cb.short.length * 7.4 + 14;
     const pulse = isCur || k === last ? rep(isCur ? 3 : 1, j => `<circle r="${isCur ? 6 : 4.5}" fill="${cb.color}" stroke="${cb.halo}" stroke-width="1.5"><animateMotion dur="${isCur ? 1.8 : 2.6}s" begin="${j * (isCur ? .6 : 0) + (isCur ? .9 : i * .2)}s" repeatCount="indefinite" path="${d}"/></circle>`) : "";
-    return `<path class="wire-halo ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.halo};${isCur ? "stroke-width:9" : k === last ? "" : "opacity:.3"}"/><path class="wire ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.color};${isCur ? "stroke-width:6" : k === last ? "" : "opacity:.55"}"/>${pulse}
+    return `<path class="wire-halo ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.halo};${isCur ? "stroke-width:9" : k === last ? "" : "opacity:.3"}"/><path class="wire ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.color};${isCur ? "stroke-width:6" : k === last ? "" : "opacity:.55"}"/>${stripeSVG(cb, d, !isCur && k !== last ? `opacity=".55"` : "", isCur ? "ls-stripe-in" : "")}${pulse}
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})" ${isCur || k === last ? "" : `opacity=".6"`}><rect width="${lw}" height="20" rx="10" style="stroke:${cb.color}"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g>`;
   }).join("");
   const nodesSVG = Object.values(N).map(x => {
@@ -1552,7 +1557,7 @@ function renderLessons(){
       <h4>About ${esc(cb.short)} cable</h4><p class="muted">${esc(info.about)}</p>`;
   } else {
     panel = `<span class="eyebrow">Lesson complete · ${esc(sc.name)}</span><h3>The whole path</h3>
-      <ol class="ls-sum">${sc.edges.map(e => `<li><b>${esc(N[e[0]].it.model)} → ${esc(N[e[1]].it.model)}</b><span style="--c:${CABLE[cab(e)].color};--ci:${CABLE[cab(e)].ink}" class="ls-chip">${esc(CABLE[cab(e)].short)}</span></li>`).join("")}</ol>
+      <ol class="ls-sum">${sc.edges.map(e => `<li><b>${esc(N[e[0]].it.model)} → ${esc(N[e[1]].it.model)}</b><span style="--c:${CABLE[cab(e)].color};--ci:${CABLE[cab(e)].ink};${CABLE[cab(e)].stripe ? `box-shadow:inset 0 0 0 2px ${CABLE[cab(e)].stripe}` : ""}" class="ls-chip">${esc(CABLE[cab(e)].short)}</span></li>`).join("")}</ol>
       ${spare ? `<h4>Not connected</h4><p><b>${esc(nameOf(spare.id))}</b> is a ${esc(what(spare.it).toLowerCase())}. ${esc(CAT[spare.it.cat][2])} It isn't part of this ${esc(sc.name.toLowerCase())} system, so it gets no cable.</p>` : ""}
       <div class="actions" style="justify-content:flex-start"><button class="btn primary" id="lspractice">Practice in the System builder</button>${LS.s + 1 < SCEN.length ? `<button class="btn" id="lsnext">Next lesson: ${esc(SCEN[LS.s + 1].name)}</button>` : ""}</div>`;
   }
@@ -1638,7 +1643,7 @@ function bWiresSVG(g){
   const revSet = new Set(g ? g.rev.map(x => x.w) : []);
   const cls = w => !g ? "" : revSet.has(w) ? "g-type" : g.ok.some(x => x.w === w) ? "g-ok" : g.type.some(x => x.w === w) ? "g-type" : "g-extra";
   let out = B.wires.map((w, i) => { const [d, mx, my] = bWirePath(bNode(w.a), bNode(w.b)), cb = CABLE[w.cable], lw = cb.short.length * 7.4 + 14;
-    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${cls(w)}" d="${d}" style="stroke:${cb.color}"/>
+    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${cls(w)}" d="${d}" style="stroke:${cb.color}"/>${cls(w) ? "" : stripeSVG(cb, d)}
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g></g>`; }).join("");
   if (g && B.reveal) out += g.miss.map(e => { const [d] = bWirePath(bNode(e[0]), bNode(e[1])); return `<path class="wire g-miss" d="${d}"/>`; }).join("");
   return out;
@@ -1724,11 +1729,11 @@ function bAddWire(a, b){
 }
 /* ---- the Wire box: drag a spool onto the block where the signal starts, then click where it goes ---- */
 const spoolSVG = c => `<svg class="spool" viewBox="0 0 66 44" aria-hidden="true">
-  <path d="M38 31 C50 31 50 39 58 39" fill="none" stroke="${c.color}" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M38 31 C50 31 50 39 58 39" fill="none" stroke="${c.color}" stroke-width="3.2" stroke-linecap="round"/>${c.stripe ? `<path d="M38 31 C50 31 50 39 58 39" fill="none" stroke="${c.stripe}" stroke-width="3.2" stroke-dasharray="2.5 2.5"/>` : ""}
   <rect x="56" y="34.5" width="8" height="9" rx="1.5" fill="#c9ced3" stroke="#6b737b" stroke-width=".8"/>
   <ellipse cx="12" cy="22" rx="5.5" ry="19" fill="#3a424b"/>
   <rect x="12" y="7" width="26" height="30" fill="${c.color}"/>
-  ${rep(7, i => `<path d="M${14 + i * 3.6} 7 L${12 + i * 3.6} 37" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>`)}
+  ${c.stripe ? rep(7, i => `<path d="M${13.6 + i * 3.6} 7 L${11.6 + i * 3.6} 37" stroke="${c.stripe}" stroke-width="1.7"/>`) : rep(7, i => `<path d="M${14 + i * 3.6} 7 L${12 + i * 3.6} 37" stroke="#000" stroke-opacity=".22" stroke-width="1.1"/>`)}
   <rect x="12" y="7" width="26" height="30" fill="none" stroke="#000" stroke-opacity=".18"/>
   <ellipse cx="38" cy="22" rx="5.5" ry="19" fill="#5b636b"/>
   <ellipse cx="38" cy="22" rx="2.2" ry="6.5" fill="#1d2126"/></svg>`;
@@ -1736,7 +1741,7 @@ function wireBoxHTML(){
   const pend = B.pend ? bNode(B.pend) : null;
   return `<aside class="card wirebox" aria-label="Wire box">
     <div class="wb-head"><h3>Wire box</h3><span class="muted">Drag a cable onto a block</span></div>
-    ${pend ? `<div class="wb-pend" role="status"><span class="wb-dot" style="background:${CABLE[B.cable].color}"></span><span>Running <b>${esc(CABLE[B.cable].short)}</b> from <b>${esc(pend.it.model)}</b>. Click the block it goes to.</span><button class="btn small" id="bpendx">Cancel</button></div>` : ""}
+    ${pend ? `<div class="wb-pend" role="status"><span class="wb-dot" style="background:${swatchBG(CABLE[B.cable])}"></span><span>Running <b>${esc(CABLE[B.cable].short)}</b> from <b>${esc(pend.it.model)}</b>. Click the block it goes to.</span><button class="btn small" id="bpendx">Cancel</button></div>` : ""}
     <div class="wb-spools">${Object.entries(CABLE).map(([k, c]) => `<button class="wb-spool" data-spool="${k}" aria-pressed="${B.cable === k}" title="${esc(c.name)}">${spoolSVG(c)}<span class="wb-name">${esc(c.name)}</span></button>`).join("")}</div>
   </aside>`;
 }
