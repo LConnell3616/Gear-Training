@@ -208,6 +208,8 @@ svg.flow{display:block;width:100%;min-width:820px;height:auto;touch-action:none;
 .node .nsub{fill:var(--muted)}
 .wire{fill:none;stroke-width:4;stroke-linecap:round;cursor:pointer}
 .wire-hit{fill:none;stroke:transparent;stroke-width:18;cursor:pointer}
+.wire-halo{fill:none;stroke-width:7.5;stroke-linecap:round;opacity:.6;pointer-events:none}
+#btemp,#temp{filter:drop-shadow(0 0 1.5px rgba(128,128,128,.95))}
 .wire-hit:hover + .wire{stroke-width:6}
 .wlabel rect{fill:var(--card);stroke:var(--line-strong)}
 .wlabel text{fill:var(--fg);font-size:12px;font-weight:700;font-family:var(--font)}
@@ -317,7 +319,7 @@ footer .wrap{padding-block:16px}
 .wb-spool .spool{width:54px;height:36px;flex:none}
 .wb-name{font-size:12.5px;font-weight:600;line-height:1.25}
 .wb-pend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px;border:1px solid var(--accent);background:var(--blue-soft);border-radius:var(--r-md);padding:8px}
-.wb-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.wb-dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px var(--line-strong)}
 .wb-ghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:10px;background:var(--card);border:1px solid var(--accent);box-shadow:var(--shadow-md);font-size:12px}
 .wb-ghost .spool{width:58px;height:38px}
 .bnode.dropto .nbox{stroke:var(--accent);stroke-width:4}
@@ -428,7 +430,7 @@ a.btn{text-decoration:none}
 .ls-gear span{font-size:12px;color:var(--muted)}
 .ls-sum{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
 .ls-sum li b{font-weight:700}
-.ls-chip{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;color:#fff;background:var(--c)}
+.ls-chip{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px;color:var(--ci,#fff);background:var(--c);box-shadow:inset 0 0 0 1px rgba(127,127,127,.5)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.confetti,.combo,.floater{display:none}.ls-draw{stroke-dashoffset:0}}
 </style>
 
@@ -1286,14 +1288,15 @@ function renderStudy(){
 
 /* ================= SIGNAL FLOW ================= */
 const CABLE = {
-  xlr:{name:"XLR (analog audio)", short:"XLR", color:"#7a3db8"},
-  aes:{name:"AES/EBU (110Ω digital)", short:"AES", color:"#d6336c"},
-  cat6:{name:"CAT6 / etherCON", short:"CAT6", color:"#1f8fd6"},
-  sdi:{name:"SDI coax (BNC)", short:"SDI", color:"#e0782a"},
-  hdmi:{name:"HDMI", short:"HDMI", color:"#2aa198"},
-  spk:{name:"Speaker cable", short:"SPK", color:"#c0392b"},
-  dmx:{name:"DMX 5-pin", short:"DMX", color:"#c9a000"},
-  fiber:{name:"Fiber (LC)", short:"Fiber", color:"#1aa35a"}
+  /* color = the cable jacket; halo = outline that keeps it visible on light and dark canvases; ink = text on a chip of that color */
+  xlr:{name:"XLR (analog audio)", short:"XLR", color:"#17191c", halo:"#c9d0d8", ink:"#ffffff"},
+  aes:{name:"AES/EBU (110Ω digital)", short:"AES", color:"#8b929a", halo:"#14181c", ink:"#14181c"},
+  cat6:{name:"CAT6 / etherCON", short:"CAT6", color:"#a25cf2", halo:"#14181c", ink:"#ffffff"},
+  sdi:{name:"SDI coax (BNC)", short:"SDI", color:"#5a1f8f", halo:"#c9d0d8", ink:"#ffffff"},
+  hdmi:{name:"HDMI", short:"HDMI", color:"#1f6fd1", halo:"#0b1220", ink:"#ffffff"},
+  spk:{name:"Speaker cable", short:"SPK", color:"#f6f6f3", halo:"#14181c", ink:"#14181c"},
+  dmx:{name:"DMX 5-pin", short:"DMX", color:"#d0362b", halo:"#14181c", ink:"#ffffff"},
+  fiber:{name:"Fiber (LC)", short:"Fiber", color:"#f2c600", halo:"#14181c", ink:"#14181c"}
 };
 const COLX = [20, 222, 424, 626, 828, 1030];
 const SCEN = [
@@ -1373,7 +1376,7 @@ function renderFlow(){
   const gclass = w => { if (!g) return ""; const k = pairKey(w.a,w.b);
     if (g.ok.some(x => x.w === w)) return "g-ok"; if (g.type.some(x => x.w === w)) return "g-type"; return "g-extra"; };
   const wireSVG = wires.map((w, i) => { const [d, mx, my] = wirePath(N[w.a], N[w.b]); const cb = CABLE[w.cable]; const lw = cb.short.length * 7.4 + 14;
-    return `<g data-wire="${i}"><path class="wire-hit" d="${d}"/><path class="wire ${gclass(w)}" d="${d}" style="stroke:${cb.color}"/>
+    return `<g data-wire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${gclass(w)}" d="${d}" style="stroke:${cb.color}"/>
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g></g>`; }).join("");
   const missSVG = g && FL.reveal ? g.miss.map(e => { const [d, mx, my] = wirePath(N[e[0]], N[e[1]]); const cb = CABLE[cab(e)]; const lw = cb.short.length*7.4+14;
     return `<path class="wire g-miss" d="${d}"/><g class="wlabel" transform="translate(${mx-lw/2},${my-10})"><rect width="${lw}" height="20" rx="10" style="stroke:var(--blue)"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}?</text></g>`; }).join("") : "";
@@ -1519,8 +1522,8 @@ function renderLessons(){
   const spare = Object.values(N).find(x => x.spare);
   const wiresSVG = sc.edges.slice(0, shown).map((e, i) => {
     const [d, mx, my] = wirePath(N[e[0]], N[e[1]]), cb = CABLE[cab(e)], isCur = cur && i === k - 1, lw = cb.short.length * 7.4 + 14;
-    const pulse = isCur || k === last ? rep(isCur ? 3 : 1, j => `<circle r="${isCur ? 6 : 4.5}" fill="${cb.color}" stroke="#fff" stroke-width="1.5"><animateMotion dur="${isCur ? 1.8 : 2.6}s" begin="${j * (isCur ? .6 : 0) + (isCur ? .9 : i * .2)}s" repeatCount="indefinite" path="${d}"/></circle>`) : "";
-    return `<path class="wire ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.color};${isCur ? "stroke-width:6" : k === last ? "" : "opacity:.55"}"/>${pulse}
+    const pulse = isCur || k === last ? rep(isCur ? 3 : 1, j => `<circle r="${isCur ? 6 : 4.5}" fill="${cb.color}" stroke="${cb.halo}" stroke-width="1.5"><animateMotion dur="${isCur ? 1.8 : 2.6}s" begin="${j * (isCur ? .6 : 0) + (isCur ? .9 : i * .2)}s" repeatCount="indefinite" path="${d}"/></circle>`) : "";
+    return `<path class="wire-halo ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.halo};${isCur ? "stroke-width:9" : k === last ? "" : "opacity:.3"}"/><path class="wire ${isCur ? "ls-draw" : ""}" d="${d}" pathLength="1" style="stroke:${cb.color};${isCur ? "stroke-width:6" : k === last ? "" : "opacity:.55"}"/>${pulse}
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})" ${isCur || k === last ? "" : `opacity=".6"`}><rect width="${lw}" height="20" rx="10" style="stroke:${cb.color}"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g>`;
   }).join("");
   const nodesSVG = Object.values(N).map(x => {
@@ -1549,7 +1552,7 @@ function renderLessons(){
       <h4>About ${esc(cb.short)} cable</h4><p class="muted">${esc(info.about)}</p>`;
   } else {
     panel = `<span class="eyebrow">Lesson complete · ${esc(sc.name)}</span><h3>The whole path</h3>
-      <ol class="ls-sum">${sc.edges.map(e => `<li><b>${esc(N[e[0]].it.model)} → ${esc(N[e[1]].it.model)}</b><span style="--c:${CABLE[cab(e)].color}" class="ls-chip">${esc(CABLE[cab(e)].short)}</span></li>`).join("")}</ol>
+      <ol class="ls-sum">${sc.edges.map(e => `<li><b>${esc(N[e[0]].it.model)} → ${esc(N[e[1]].it.model)}</b><span style="--c:${CABLE[cab(e)].color};--ci:${CABLE[cab(e)].ink}" class="ls-chip">${esc(CABLE[cab(e)].short)}</span></li>`).join("")}</ol>
       ${spare ? `<h4>Not connected</h4><p><b>${esc(nameOf(spare.id))}</b> is a ${esc(what(spare.it).toLowerCase())}. ${esc(CAT[spare.it.cat][2])} It isn't part of this ${esc(sc.name.toLowerCase())} system, so it gets no cable.</p>` : ""}
       <div class="actions" style="justify-content:flex-start"><button class="btn primary" id="lspractice">Practice in the System builder</button>${LS.s + 1 < SCEN.length ? `<button class="btn" id="lsnext">Next lesson: ${esc(SCEN[LS.s + 1].name)}</button>` : ""}</div>`;
   }
@@ -1635,7 +1638,7 @@ function bWiresSVG(g){
   const revSet = new Set(g ? g.rev.map(x => x.w) : []);
   const cls = w => !g ? "" : revSet.has(w) ? "g-type" : g.ok.some(x => x.w === w) ? "g-ok" : g.type.some(x => x.w === w) ? "g-type" : "g-extra";
   let out = B.wires.map((w, i) => { const [d, mx, my] = bWirePath(bNode(w.a), bNode(w.b)), cb = CABLE[w.cable], lw = cb.short.length * 7.4 + 14;
-    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire ${cls(w)}" d="${d}" style="stroke:${cb.color}"/>
+    return `<g data-bwire="${i}"><path class="wire-hit" d="${d}"/><path class="wire-halo" d="${d}" style="stroke:${cb.halo}"/><path class="wire ${cls(w)}" d="${d}" style="stroke:${cb.color}"/>
       <g class="wlabel" transform="translate(${mx - lw/2},${my - 10})"><rect width="${lw}" height="20" rx="10"/><text x="${lw/2}" y="14" text-anchor="middle">${cb.short}</text></g></g>`; }).join("");
   if (g && B.reveal) out += g.miss.map(e => { const [d] = bWirePath(bNode(e[0]), bNode(e[1])); return `<path class="wire g-miss" d="${d}"/>`; }).join("");
   return out;
